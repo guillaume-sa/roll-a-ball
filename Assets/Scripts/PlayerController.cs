@@ -10,6 +10,14 @@ public class PlayerController : MonoBehaviour {
     private Rigidbody rb;                           // Player's Rigidbody
     private int count;                              // Player's score
 
+    public int Count
+    {
+        get
+        {
+            return count;
+        }
+    }
+
 	// Initialization
 	void Start () {
         // Get Player's Rigidbody
@@ -45,7 +53,8 @@ public class PlayerController : MonoBehaviour {
         if (other.gameObject.CompareTag("Pick Up"))
         {
             // Disable pick up object
-            other.gameObject.SetActive(false);
+            // other.gameObject.SetActive(false);
+            Destroy(other.gameObject);
             // Increment player's score
             count += 1;
             // Update player's score text
@@ -59,7 +68,7 @@ public class PlayerController : MonoBehaviour {
         // Set score text
         countText.text = "Count: " + count.ToString();
         // If player gets all pick up objects
-        if (count >= 8)
+        if (count >= SettingsManager.MAX_SCORE)
         {
             // Set win text
             winText.text = "You Win!";
