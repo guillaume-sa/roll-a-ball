@@ -1,16 +1,17 @@
 ﻿using UnityEngine;
+using UnityEngine.Networking;
 
-public class PickUpManager : MonoBehaviour {
+public class PickUpManager : NetworkBehaviour {
 
     public float spawnTime;                    // How long between each spawn.
-    public GameObject pickUp;                  // Pick up prefab
+    public GameObject pickUpPrefab;            // Pick up prefab
 
     public GameObject ground;                  // Ground GameObject    
     private float groundX;                     // Ground x bound
     private float groundZ;                     // Ground z bound
 
-    private PlayerController player;           // Player
     private bool gameOver;                     // GameOver boolean
+    GameObject[] players = null;               // GameObject players
 
     // Use this for initialization
     void Start () {
@@ -22,9 +23,6 @@ public class PickUpManager : MonoBehaviour {
         groundX = (groundSize.x /2.0f) - 1f;
         groundZ = (groundSize.z /2.0f) - 1f;
 
-        // Get Player's gameobject
-        player = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerController>();
-
         // Initialize gameOver to false
         gameOver = false;
 
@@ -35,25 +33,37 @@ public class PickUpManager : MonoBehaviour {
     void Update()
     {
         // Game is not over and player reached maximum score
-        if (!gameOver && player.Count >= SettingsManager.MAX_SCORE)
+        if (!gameOver)
         {
-            // Set gameOver to true
-            gameOver = true;
-
-            // Find all remaining pick up objects
-            GameObject[] pickUpObjects = GameObject.FindGameObjectsWithTag("Pick Up");
-            // Iterate list of remaining objects
-            foreach (GameObject pickUp in pickUpObjects)
+            // Get the connected players 
+            if (NetworkServer.connections.Count > 1 && players == null)
             {
-                // Destroy pick up object
-                Destroy(pickUp);
+                // Strore player's GameObject
+                players = GameObject.FindGameObjectsWithTag("Player");
+            }
+            // Players are set
+            if (players != null)
+            {
+                // Iterate players
+                foreach (GameObject player in players)
+                {
+                    PlayerController playerController = player.GetComponent<PlayerController>();
+                    if (playerController.Count >= SettingsManager.MAX_SCORE)
+                    {
+                        // Game is over
+                        gameOver = true;
+                        // Clean the board
+                        Clean();
+                        break;
+                    }
+                }
             }
         }
     }
 
     void Spawn()
-    {       
-        if (!gameOver)
+    {
+        if (NetworkServer.active && NetworkServer.connections.Count > 1 && !gameOver)
         {
             // Get random x and z coordinates
             float spawnX = Random.Range(-groundX, groundX);
@@ -63,7 +73,22 @@ public class PickUpManager : MonoBehaviour {
             Vector3 randomSpawnPosition = new Vector3(spawnX, 0.5f, spawnZ);
 
             // Create an instance of the pick up prefab at the random position
-            Instantiate(pickUp, randomSpawnPosition, Quaternion.identity);
+            GameObject pickUp = (GameObject)Instantiate(pickUpPrefab, randomSpawnPosition, Quaternion.identity);
+
+            // Spawn pickup object
+            NetworkServer.Spawn(pickUp);
+        }
+    }
+
+    void Clean()
+    {
+        // Find all remaining pick up objects
+        GameObject[] pickUpObjects = GameObject.FindGameObjectsWithTag("Pick Up");
+        // Iterate list of remaining objects
+        foreach (GameObject pickUp in pickUpObjects)
+        {
+            // Destroy pick up object
+            Destroy(pickUp);
         }
     }
 }
